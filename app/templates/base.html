@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}SiteScan{% endblock %}</title>{% block head %}{% endblock %}
+<style>
+:root{--bg:#fff;--fg:#1a1a1a;--mut:#666;--line:#e3e3e3;--card:#f6f6f8;--side:#f0f1f4;--accent:#2457d6;--crit:#b3261e;--high:#c2570c;--med:#946200;--low:#3d6b2f;--info:#555}
+@media(prefers-color-scheme:dark){:root{--bg:#141517;--fg:#ececec;--mut:#9a9a9a;--line:#2c2e32;--card:#1c1e21;--side:#191b1e;--accent:#7aa2ff;--crit:#ff8a80;--high:#ffab70;--med:#e8c15a;--low:#9bd18a;--info:#aaa}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,sans-serif}
+body.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+.side{background:var(--side);border-right:1px solid var(--line);padding:18px 14px;position:sticky;top:0;height:100vh;overflow:auto;display:flex;flex-direction:column;gap:4px}
+.side a{color:var(--fg);text-decoration:none;padding:7px 10px;border-radius:8px;display:flex;justify-content:space-between;gap:8px}
+.side a:hover,.side a.on{background:var(--card)}.side .brand{font-weight:700;font-size:18px;margin-bottom:10px}
+.sidehead{margin:16px 10px 4px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
+.domlist{display:flex;flex-direction:column;gap:2px;overflow:auto}.domlist span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.logout{margin-top:auto;padding:10px;font-size:13px;word-break:break-all}
+main{max-width:980px;margin:0 auto;padding:24px 20px 64px}body.app main{margin:0;max-width:1000px}
+nav.top{display:flex;gap:16px;align-items:center;max-width:860px;margin:0 auto;padding:16px}nav.top a.brand{font-weight:700;margin-right:auto;text-decoration:none}
+a{color:var(--accent)}h1{font-size:28px;margin:.2em 0}h2{font-size:18px;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:12px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}.grid .card{margin:0}
+input[type=text],input[type=email],input[type=password]{padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit;width:100%;max-width:360px}
+input[type=checkbox]{width:auto;margin-right:6px}
+button,.btn{padding:9px 16px;border:0;border-radius:8px;background:var(--accent);color:var(--bg);font:inherit;cursor:pointer;text-decoration:none;display:inline-block}
+button.ghost,.btn.ghost{background:none;color:var(--accent);border:1px solid var(--line)}button:disabled{opacity:.5}form.inline{display:inline}
+.badge{display:inline-block;padding:0 9px;border-radius:99px;border:1px solid currentColor;font-size:12px;text-transform:uppercase}
+.critical{color:var(--crit)}.high{color:var(--high)}.medium{color:var(--med)}.low{color:var(--low)}.info{color:var(--info)}
+.muted{color:var(--mut)}code{background:var(--card);padding:2px 6px;border-radius:5px;word-break:break-all}
+.stat{font-size:34px;font-weight:700;line-height:1.1}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.bar{height:10px;background:var(--line);border-radius:5px;overflow:hidden}.bar i{display:block;height:100%;border-radius:5px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:18px 0 14px;overflow:auto}
+.tabs button{background:none;color:var(--mut);border-radius:8px 8px 0 0;border-bottom:2px solid transparent}.tabs button.on{color:var(--fg);border-bottom-color:var(--accent)}
+table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}th{font-weight:600;color:var(--mut);font-size:13px}
+details.f{padding:12px 16px}details.f summary{cursor:pointer}details.f[hidden]{display:none}
+.chips button{background:none;color:var(--fg);border:1px solid var(--line);padding:3px 12px;border-radius:99px}.chips button.on{background:var(--accent);color:var(--bg)}
+@media(max-width:800px){body.app{display:block}.side{position:static;height:auto}}
+</style></head>
+<body class="{{ 'app' if user else '' }}">
+{% if user %}<aside class="side">
+<a class="brand" href="/dashboard">SiteScan</a>
+<a href="/dashboard" class="{{ 'on' if active == 'dash' }}">Dashboard</a>
+<a href="/dashboard#new">+ New scan</a>
+<div class="sidehead">Your domains</div>
+<div class="domlist">{% for s in side_domains %}<a href="/domains/{{ s.id }}" class="{{ 'on' if active_id == s.id }}"><span>{{ s.domain }}</span><b style="color:{{ s.color }}">{{ s.score if s.score is not none else '-' }}</b></a>{% else %}<span class="muted" style="padding:0 10px">None yet</span>{% endfor %}</div>
+<form method="post" action="/logout" class="logout"><div class="muted">{{ user.email }}</div><button class="ghost" style="margin-top:6px">Log out</button></form>
+</aside>{% else %}<nav class="top"><a class="brand" href="/">SiteScan</a><a href="/login">Log in</a><a href="/signup">Sign up</a></nav>{% endif %}
+<div><main>{% block body %}{% endblock %}</main></div>
+</body></html>

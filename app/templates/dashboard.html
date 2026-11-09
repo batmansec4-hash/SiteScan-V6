@@ -1,0 +1,26 @@
+{% extends "base.html" %}{% block body %}
+<h1>Dashboard</h1>
+{% if error %}<p class="critical">{{ error }}</p>{% endif %}
+<div class="grid">
+<div class="card"><div class="muted">Domains</div><div class="stat">{{ stats.domains }}</div></div>
+<div class="card"><div class="muted">Average score</div><div class="stat">{{ stats.avg if stats.avg is not none else '-' }}</div></div>
+<div class="card"><div class="muted">Critical + high issues</div><div class="stat {{ 'critical' if stats.urgent }}">{{ stats.urgent }}</div></div></div>
+
+<div class="card" id="new"><h2>New scan</h2>
+<form method="post" action="/scan">
+<p><input type="text" name="domain" placeholder="example.com" required> <button>Scan</button></p>
+<label><input type="checkbox" name="deep" value="1" id="deep">Deep checks (open ports and exposed files)</label>
+<div id="authl" hidden style="margin-top:6px"><label><input type="checkbox" name="authorized" value="1">I confirm I own this domain or am authorized to test it.</label></div>
+</form></div>
+<script>document.getElementById('deep').onchange=e=>document.getElementById('authl').hidden=!e.target.checked</script>
+
+<h2 style="margin-top:24px">Your domains</h2>
+{% if items %}<div class="card" style="padding:4px 16px"><table><tr><th>Domain</th><th>Score</th><th>Trend</th><th>Issues</th><th>Last scan</th></tr>
+{% for d in items %}<tr><td><a href="/domains/{{ d.id }}">{{ d.domain }}</a>{% if d.running %} <span class="muted">scanning...</span>{% endif %}</td>
+<td style="min-width:120px">{% if d.score is not none %}<b style="color:{{ sc(d.score) }}">{{ d.score }}</b><div class="bar"><i style="width:{{ d.score }}%;background:{{ sc(d.score) }}"></i></div>{% else %}-{% endif %}</td>
+<td>{{ d.spark }}</td>
+<td>{% if d.counts %}<span class="critical">{{ d.counts.critical }}</span> / <span class="high">{{ d.counts.high }}</span> / <span class="medium">{{ d.counts.medium }}</span> / <span class="low">{{ d.counts.low }}</span>{% else %}-{% endif %}</td>
+<td class="muted">{{ d.last }}</td></tr>{% endfor %}</table></div>
+<p class="muted">Issues are critical / high / medium / low.</p>
+{% else %}<p class="muted">No scans yet. Enter a domain above.</p>{% endif %}
+{% endblock %}

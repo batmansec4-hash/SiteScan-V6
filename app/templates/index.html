@@ -1,0 +1,9 @@
+{% extends "base.html" %}{% block body %}
+<h1>Is your website quietly exposed?</h1>
+<p>Scan any domain for certificate, header, cookie, DNS and email-spoofing problems. Get a score, charts, plain-English fixes and a PDF report.</p>
+<p><a class="btn" href="/signup">Scan a domain</a></p>
+<div class="grid" style="margin-top:24px">
+<div class="card"><h2>Quick scan</h2>TLS, redirects, security headers, cookies, SPF, DMARC, DKIM, CAA, domain expiry.</div>
+<div class="card"><h2>Deep scan</h2>Adds risky open ports and exposed files like .git and .env. Only for systems you are authorized to test.</div>
+<div class="card"><h2>Reports</h2>Score trend, category breakdown, fix list, downloadable PDF and JSON.</div></div>
+{% endblock %}

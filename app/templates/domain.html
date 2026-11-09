@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block head %}{% if running %}<meta http-equiv="refresh" content="4">{% endif %}{% endblock %}
+{% block body %}
+<div class="row" style="justify-content:space-between"><div><h1>{{ d.domain }}</h1>
+<div class="muted">{% if report %}Last scan {{ report.scanned_at[:16].replace('T',' ') }} UTC &middot; {{ 'Deep' if report.active_checks_run else 'Quick' }} scan{% else %}Not scanned yet{% endif %}</div></div>
+<div class="row">{% if ok and latest_id %}<a class="btn" href="/reports/{{ latest_id }}/pdf">Download PDF</a><a class="btn ghost" href="/reports/{{ latest_id }}/json">JSON</a>{% endif %}
+<form class="inline" method="post" action="/domains/{{ d.id }}/delete" onsubmit="return confirm('Delete this domain and its history?')"><button class="ghost">Delete</button></form></div></div>
+{% if msg %}<p class="card">{{ msg }}</p>{% endif %}
+{% if failed %}<p class="card critical">The last scan failed. Try again.</p>{% endif %}
+
+<form class="card row" method="post" action="/domains/{{ d.id }}/scan">
+<button {{ 'disabled' if running }}>{{ 'Scanning...' if running else 'Scan again' }}</button>
+<label><input type="checkbox" name="deep" value="1" id="deep">Deep checks (ports and exposed files)</label>
+<label id="authl" hidden><input type="checkbox" name="authorized" value="1">I am authorized to test this domain</label>
+</form>
+
+{% if report and report.info.error %}<p class="card critical">{{ report.info.error }}</p>
+{% elif report %}
+<div class="tabs"><button data-t="overview">Overview</button><button data-t="findings">Findings ({{ report.findings|length }})</button><button data-t="recon">Details</button><button data-t="history">History</button></div>
+
+<section data-tab="overview">
+<div class="grid">
+<div class="card" style="text-align:center"><h2>Security score</h2>{{ gauge }}</div>
+<div class="card"><h2>Findings by severity</h2>
+{% set mx = summ.counts.values()|max %}{% for s in sevs %}<div class="row" style="margin:6px 0"><span class="badge {{ s }}" style="width:76px;text-align:center">{{ s }}</span>
+<div class="bar" style="flex:1"><i style="width:{{ (summ.counts[s] / (mx or 1) * 100)|round }}%;background:var(--{{ {'critical':'crit','high':'high','medium':'med','low':'low','info':'info'}[s] }})"></i></div><b>{{ summ.counts[s] }}</b></div>{% endfor %}</div>
+<div class="card"><h2>Category scores</h2>
+{% for c in summ.cats %}<div style="margin:8px 0"><div class="row" style="justify-content:space-between"><span>{{ c.name }}</span>
+{% if c.score is none %}<span class="muted">not tested</span>{% else %}<b style="color:{{ sc(c.score) }}">{{ c.score }}</b>{% endif %}</div>
+<div class="bar"><i style="width:{{ c.score or 0 }}%;background:{{ sc(c.score) if c.score is not none else 'transparent' }}"></i></div></div>{% endfor %}
+{% if not report.active_checks_run %}<p class="muted" style="font-size:13px">Turn on deep checks to test Exposure.</p>{% endif %}</div>
+</div>
+{% if report.top_fixes %}<div class="card"><h2>Fix these first</h2><ol style="margin:0;padding-left:20px">
+{% for f in report.findings if f.id in report.top_fixes %}<li><span class="badge {{ f.severity }}">{{ f.severity }}</span> <b>{{ f.title }}</b><div class="muted">{{ f.plain }}</div></li>{% endfor %}</ol></div>
+{% else %}<div class="card">No issues found. Nice work.</div>{% endif %}
+</section>
+
+<section data-tab="findings" hidden>
+<div class="chips row" style="margin-bottom:10px"><button class="on" data-s="all">All</button>{% for s in sevs if summ.counts[s] %}<button data-s="{{ s }}">{{ s|title }} ({{ summ.counts[s] }})</button>{% endfor %}</div>
+{% for f in report.findings %}<details class="f card" data-sev="{{ f.severity }}"><summary><span class="badge {{ f.severity }}">{{ f.severity }}</span> <b>{{ f.title }}</b> <span class="muted">{{ f.category }}</span></summary>
+<p>{{ f.plain }}</p><p class="muted"><b>How to fix:</b> {{ f.fix }}</p></details>{% else %}<p>No issues found.</p>{% endfor %}
+</section>
+
+<section data-tab="recon" hidden>
+{% set i = report.info %}
+<div class="grid">
+<div class="card"><h2>Server</h2><table>
+<tr><th>IP addresses</th><td>{{ i.ips|join(', ') if i.ips }}</td></tr><tr><th>Technology</th><td>{{ i.tech|join(', ') if i.tech }}</td></tr>
+<tr><th>Page title</th><td>{{ i.title }}</td></tr><tr><th>Response time</th><td>{{ i.response_ms }} {{ 'ms' if i.response_ms }}</td></tr>
+<tr><th>security.txt</th><td>{{ 'Yes' if i.security_txt else 'No' }}</td></tr>
+{% if i.open_ports is defined %}<tr><th>Open risky ports</th><td>{{ i.open_ports|join(', ') or 'None found' }}</td></tr>{% endif %}</table></div>
+<div class="card"><h2>Certificate</h2>{% if i.cert %}<table>
+<tr><th>TLS version</th><td>{{ i.tls_version }}</td></tr><tr><th>Issuer</th><td>{{ i.cert.issuer }}</td></tr><tr><th>Subject</th><td>{{ i.cert.subject }}</td></tr>
+<tr><th>Expires</th><td>{{ i.cert.not_after }} ({{ i.cert.days_left }} days)</td></tr><tr><th>Names</th><td>{{ i.cert.san|join(', ') }}</td></tr></table>{% else %}<span class="muted">No certificate details.</span>{% endif %}</div>
+<div class="card"><h2>DNS and email</h2><table>
+<tr><th>Nameservers</th><td>{{ i.ns|join(', ') if i.ns }}</td></tr><tr><th>Mail servers</th><td>{{ i.mx|join(', ') if i.mx }}</td></tr>
+<tr><th>Domain expires</th><td>{{ i.domain_expiry }}</td></tr><tr><th>SPF</th><td>{{ i.spf|join(' ') if i.spf }}</td></tr>
+<tr><th>DMARC</th><td>{{ i.dmarc|join(' ') if i.dmarc }}</td></tr><tr><th>DKIM selectors</th><td>{{ i.dkim_selectors_found|join(', ') if i.dkim_selectors_found }}</td></tr></table></div>
+</div>
+{% if i.waf or i.subdomains or i.admin_paths_found %}<div class="card"><h2>Attack surface</h2><table>
+{% if i.waf %}<tr><th>WAF / CDN detected</th><td>{{ i.waf|join(', ') }}</td></tr>{% endif %}
+{% if i.admin_paths_found %}<tr><th>Admin/login paths found</th><td>{{ i.admin_paths_found|join(', ') }}</td></tr>{% endif %}
+{% if i.subdomains %}<tr><th>Subdomains found ({{ i.subdomain_count }})</th><td>{{ i.subdomains|join(', ') }}{% if i.subdomain_count > i.subdomains|length %} and {{ i.subdomain_count - i.subdomains|length }} more{% endif %}</td></tr>{% endif %}
+</table></div>{% endif %}
+{% if i.errors %}<p class="muted">Some checks could not complete: {{ i.errors|join('; ') }}</p>{% endif %}
+</section>
+
+<section data-tab="history" hidden>
+<div class="card"><h2>Score over time</h2>{{ trend }}</div>
+<div class="card" style="padding:4px 16px"><table><tr><th>Date</th><th>Mode</th><th>Status</th><th>Score</th><th></th></tr>
+{% for s in scans %}<tr><td>{{ s.created_at[:16].replace('T',' ') }}</td><td>{{ 'Deep' if s.deep else 'Quick' }}</td><td>{{ s.status }}</td>
+<td>{% if s.score is not none %}<b style="color:{{ sc(s.score) }}">{{ s.score }}</b>{% endif %}</td>
+<td>{% if s.status == 'done' and s.score is not none %}<a href="/reports/{{ s.id }}/pdf">PDF</a>{% endif %}</td></tr>{% endfor %}</table></div>
+</section>
+{% elif running %}<p class="card">Scanning, this page refreshes automatically...</p>{% endif %}
+
+<script>
+document.getElementById('deep').onchange=e=>document.getElementById('authl').hidden=!e.target.checked;
+const tabs=[...document.querySelectorAll('[data-t]')],secs=[...document.querySelectorAll('section[data-tab]')];
+function show(n){if(!secs.some(s=>s.dataset.tab===n))n='overview';tabs.forEach(t=>t.classList.toggle('on',t.dataset.t===n));secs.forEach(s=>s.hidden=s.dataset.tab!==n);history.replaceState(null,'','#'+n)}
+tabs.forEach(t=>t.onclick=()=>show(t.dataset.t));if(tabs.length)show(location.hash.slice(1));
+document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.chips button').forEach(x=>x.classList.toggle('on',x===b));
+document.querySelectorAll('details.f').forEach(f=>f.hidden=b.dataset.s!=='all'&&f.dataset.sev!==b.dataset.s)});
+</script>
+{% endblock %}
